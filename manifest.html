@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PromptForge — AI Prompt Composer</title>
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --surface: #141414;
+      --border: #222;
+      --accent: #ff3b8b;
+      --accent2: #bf5af2;
+      --green: #30d158;
+      --blue: #0a84ff;
+      --yellow: #ffd60a;
+      --fg: #e5e5e5;
+      --fg2: #888;
+      --fg3: #555;
+      --mono: "SF Mono", "JetBrains Mono", "Fira Code", monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    /* ── Nav ── */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .nav-brand { color: var(--accent); font-weight: 700; letter-spacing: 0.04em; }
+    .nav-links { display: flex; gap: 20px; }
+    .nav-links a {
+      color: var(--fg2);
+      text-decoration: none;
+      font-size: 12px;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--fg); }
+    .badge {
+      background: var(--accent);
+      color: #fff;
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 20px;
+      font-weight: 700;
+    }
+
+    /* ── Layout ── */
+    .shell {
+      display: flex;
+      max-width: 1100px;
+      margin: 0 auto;
+      min-height: calc(100vh - 49px);
+    }
+
+    /* ── Sidebar ── */
+    aside {
+      width: 220px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      font-size: 12px;
+    }
+    .tree-header {
+      color: var(--fg3);
+      padding: 0 16px 8px;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .tree-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 16px;
+      color: var(--fg2);
+      cursor: default;
+    }
+    .tree-item.active { color: var(--fg); background: rgba(255,59,139,0.07); }
+    .tree-item.dir { color: var(--accent2); }
+    .tree-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+    .tree-dot.yellow { background: var(--yellow); }
+    .tree-dot.blue { background: var(--blue); }
+
+    aside .divider {
+      border-top: 1px solid var(--border);
+      margin: 12px 16px;
+    }
+    .meta-row {
+      padding: 2px 16px;
+      color: var(--fg3);
+      font-size: 11px;
+    }
+    .meta-row span { color: var(--fg2); }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      padding: 40px 48px;
+      max-width: 780px;
+    }
+
+    .prompt {
+      color: var(--fg3);
+      margin-bottom: 24px;
+      font-size: 12px;
+    }
+    .prompt::before { content: "~/apps/promptforge ❯ "; color: var(--accent); }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 6px;
+      letter-spacing: -0.01em;
+    }
+    h1 .dim { color: var(--fg3); font-weight: 400; }
+
+    .tagline {
+      color: var(--fg2);
+      font-size: 14px;
+      margin-bottom: 36px;
+    }
+    .tagline em { color: var(--fg); font-style: normal; }
+
+    h2 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--fg3);
+      margin: 36px 0 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+
+    /* ── Hero statement ── */
+    .hero-block {
+      border-left: 2px solid var(--accent);
+      padding: 16px 20px;
+      margin: 0 0 36px;
+      background: rgba(255,59,139,0.04);
+      border-radius: 0 6px 6px 0;
+    }
+    .hero-block p {
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--fg);
+    }
+    .hero-block p + p { margin-top: 10px; color: var(--fg2); font-size: 13px; }
+
+    /* ── Feature list ── */
+    .feat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .feat {
+      display: flex;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .feat-icon { flex-shrink: 0; font-size: 15px; }
+    .feat-text { }
+    .feat-title { color: var(--fg); font-weight: 700; font-size: 12px; }
+    .feat-sub { color: var(--fg2); font-size: 11px; margin-top: 1px; }
+
+    /* ── YAML manifest ── */
+    .yaml {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 24px;
+      font-size: 12px;
+      line-height: 1.8;
+      margin-bottom: 8px;
+    }
+    .y-comment { color: var(--fg3); }
+    .y-key { color: var(--blue); }
+    .y-val { color: var(--green); }
+    .y-str { color: var(--yellow); }
+    .y-bool-true { color: var(--green); }
+    .y-bool-false { color: #ff453a; }
+    .y-section { color: var(--accent2); font-weight: 700; }
+    .y-indent { padding-left: 20px; }
+    .y-indent2 { padding-left: 40px; }
+
+    /* ── Comparison ── */
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .compare-col {
+      background: var(--surface);
+      padding: 16px 20px;
+    }
+    .compare-col h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+    .compare-col.before h3 { color: #ff453a; }
+    .compare-col.after h3 { color: var(--green); }
+    .compare-col ul { list-style: none; }
+    .compare-col li {
+      color: var(--fg2);
+      font-size: 12px;
+      padding: 2px 0;
+    }
+    .compare-col.before li::before { content: "✗  "; color: #ff453a; }
+    .compare-col.after li::before { content: "✓  "; color: var(--green); }
+
+    /* ── Download CTA ── */
+    .cta {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 20px 24px;
+      background: rgba(255,59,139,0.06);
+      border: 1px solid rgba(255,59,139,0.25);
+      border-radius: 8px;
+      margin-top: 36px;
+    }
+    .cta-btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      text-decoration: none;
+      padding: 9px 20px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 13px;
+      flex-shrink: 0;
+      transition: opacity 0.15s;
+    }
+    .cta-btn:hover { opacity: 0.85; }
+    .cta-meta { color: var(--fg2); font-size: 11px; line-height: 1.6; }
+    .cta-meta strong { color: var(--fg); }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 16px 24px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .footer-col { padding: 0 20px; border-right: 1px solid var(--border); }
+    .footer-col:last-child { border-right: none; }
+    .footer-col:first-child { padding-left: 0; }
+    .f-label { color: var(--fg3); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+    .f-val { color: var(--fg2); font-size: 12px; }
+    .f-val strong { color: var(--fg); }
+
+    @media (max-width: 700px) {
+      .shell { flex-direction: column; }
+      aside { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+      main { padding: 24px 20px; }
+      .feat-grid { grid-template-columns: 1fr; }
+      .compare { grid-template-columns: 1fr; }
+      footer { grid-template-columns: 1fr 1fr; gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <span class="nav-brand">⬡ PromptForge</span>
+  <div class="nav-links">
+    <a href="https://github.com/abuis78/PromptForge-releases/releases/latest">Download</a>
+    <a href="https://github.com/abuis78/PromptForge-releases">GitHub</a>
+    <span class="badge">v1.9</span>
+  </div>
+</nav>
+
+<div class="shell">
+
+  <!-- Sidebar tree -->
+  <aside>
+    <div class="tree-header">Explorer</div>
+
+    <div class="tree-item dir">▾ promptforge/</div>
+    <div class="tree-item active" style="padding-left:28px">● manifest.md</div>
+    <div class="tree-item" style="padding-left:28px">  features.md</div>
+    <div class="tree-item" style="padding-left:28px">  download.md</div>
+
+    <div class="tree-item dir" style="padding-left:28px">▾ modules/</div>
+    <div class="tree-item" style="padding-left:40px">  tiles.swift</div>
+    <div class="tree-item" style="padding-left:40px">  skills.swift</div>
+    <div class="tree-item" style="padding-left:40px">  projects.swift</div>
+    <div class="tree-item" style="padding-left:40px">  multisend.swift</div>
+    <div class="tree-item" style="padding-left:40px">  llmservice.swift</div>
+
+    <div class="divider"></div>
+
+    <div class="meta-row">platform <span>macOS 14+</span></div>
+    <div class="meta-row">arch <span>arm64 · x86_64</span></div>
+    <div class="meta-row">signed <span style="color:var(--green)">✓ notarised</span></div>
+    <div class="meta-row">cloud <span style="color:#ff453a">✗ none</span></div>
+    <div class="meta-row">source <span>private</span></div>
+    <div class="meta-row">lang <span>de · en · fr · es</span></div>
+
+    <div class="divider"></div>
+
+    <div class="meta-row">status</div>
+    <div class="tree-item"><span class="tree-dot"></span> tiles active</div>
+    <div class="tree-item"><span class="tree-dot yellow"></span> llm ready</div>
+    <div class="tree-item"><span class="tree-dot blue"></span> multi-send</div>
+  </aside>
+
+  <!-- Main content -->
+  <main>
+    <div class="prompt">cat manifest.md</div>
+
+    <h1>PromptForge <span class="dim">// AI Prompt Composer</span></h1>
+    <p class="tagline">Prompts <em>bauen</em>. Strukturieren. An mehrere AIs <em>gleichzeitig</em> senden.</p>
+
+    <div class="hero-block">
+      <p>Die meisten Prompts werden einmal getippt und vergessen. PromptForge ändert das — Bausteine einmal anlegen, immer wieder kombinieren, direkt in jede AI senden.</p>
+      <p>Kein Browser-Plugin. Keine Cloud. Kein Abo. Eine native macOS-App.</p>
+    </div>
+
+    <h2>// core features</h2>
+    <div class="feat-grid">
+      <div class="feat">
+        <div class="feat-icon">🧩</div>
+        <div class="feat-text">
+          <div class="feat-title">Tile System</div>
+          <div class="feat-sub">Klickbare Prompt-Bausteine. Text landet direkt am Cursor.</div>
+        </div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">⚡</div>
+        <div class="feat-text">
+          <div class="feat-title">Multi-Send</div>
+          <div class="feat-sub">Ein Prompt — alle AIs gleichzeitig. Antworten nebeneinander.</div>
+        </div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🤖</div>
+        <div class="feat-text">
+          <div class="feat-title">Skills</div>
+          <div class="feat-sub">Wiederverwendbare Anweisungen, je AI-Anbieter getaggt.</div>
+        </div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">📁</div>
+        <div class="feat-text">
+          <div class="feat-title">Projects</div>
+          <div class="feat-sub">Eigener Entwurf + History pro Projekt. Kontext bleibt erhalten.</div>
+        </div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🎙</div>
+        <div class="feat-text">
+          <div class="feat-title">Voice Input</div>
+          <div class="feat-sub">Lokales Whisper-Modell. Offline. Kein API-Call.</div>
+        </div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">📎</div>
+        <div class="feat-text">
+          <div class="feat-title">Sketch → Prompt</div>
+          <div class="feat-sub">Whiteboard-Analyse-Prompt auf Knopfdruck. Bild selbst hochladen.</div>
+        </div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">✨</div>
+        <div class="feat-text">
+          <div class="feat-title">Prompt Optimiser</div>
+          <div class="feat-sub">Prompt via LLM verbessern — lokal oder Cloud-API.</div>
+        </div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">📌</div>
+        <div class="feat-text">
+          <div class="feat-title">Sticky Instructions</div>
+          <div class="feat-sub">Text der immer angehängt wird. Einmal setzen, nie vergessen.</div>
+        </div>
+      </div>
+    </div>
+
+    <h2>// manifest.yml</h2>
+    <div class="yaml">
+      <div class="y-comment"># PromptForge — technical manifest</div>
+      <br>
+      <div><span class="y-section">app</span>:</div>
+      <div class="y-indent"><span class="y-key">name</span>: <span class="y-str">"PromptForge"</span></div>
+      <div class="y-indent"><span class="y-key">platform</span>: <span class="y-str">"macOS 14+"</span></div>
+      <div class="y-indent"><span class="y-key">arch</span>: <span class="y-str">"arm64 · x86_64"</span></div>
+      <div class="y-indent"><span class="y-key">signed</span>: <span class="y-bool-true">true</span> <span class="y-comment"># Developer ID + Apple Notarisation</span></div>
+      <br>
+      <div><span class="y-section">data</span>:</div>
+      <div class="y-indent"><span class="y-key">cloud_sync</span>: <span class="y-bool-false">false</span></div>
+      <div class="y-indent"><span class="y-key">analytics</span>: <span class="y-bool-false">false</span></div>
+      <div class="y-indent"><span class="y-key">storage</span>: <span class="y-str">"UserDefaults (lokal)"</span></div>
+      <div class="y-indent"><span class="y-key">api_keys</span>: <span class="y-str">"lokal gespeichert, nie übertragen"</span></div>
+      <br>
+      <div><span class="y-section">providers</span>:</div>
+      <div class="y-indent"><span class="y-key">api</span>: <span class="y-str">[ Claude, GPT-4o, Gemini, Ollama ]</span></div>
+      <div class="y-indent"><span class="y-key">browser</span>: <span class="y-str">[ Claude.ai, ChatGPT, Gemini, Perplexity, Phind ]</span></div>
+      <div class="y-indent"><span class="y-key">local</span>: <span class="y-str">[ Ollama, Whisper ]</span></div>
+      <br>
+      <div><span class="y-section">features</span>:</div>
+      <div class="y-indent"><span class="y-key">tile_system</span>: <span class="y-bool-true">true</span></div>
+      <div class="y-indent"><span class="y-key">multi_send_parallel</span>: <span class="y-bool-true">true</span></div>
+      <div class="y-indent"><span class="y-key">projects</span>: <span class="y-bool-true">true</span></div>
+      <div class="y-indent"><span class="y-key">voice_input_offline</span>: <span class="y-bool-true">true</span></div>
+      <div class="y-indent"><span class="y-key">prompt_optimiser</span>: <span class="y-bool-true">true</span></div>
+      <div class="y-indent"><span class="y-key">sketch_prompt</span>: <span class="y-bool-true">true</span></div>
+      <div class="y-indent"><span class="y-key">languages</span>: <span class="y-str">[ de, en, fr, es ]</span></div>
+      <br>
+      <div class="y-comment"># was hier nie passiert</div>
+      <div><span class="y-section">never</span>:</div>
+      <div class="y-indent"><span class="y-key">prompts_leave_device</span>: <span class="y-bool-false">false</span></div>
+      <div class="y-indent"><span class="y-key">subscription</span>: <span class="y-bool-false">false</span></div>
+      <div class="y-indent"><span class="y-key">account_required</span>: <span class="y-bool-false">false</span></div>
+    </div>
+
+    <h2>// vorher · nachher</h2>
+    <div class="compare">
+      <div class="compare-col before">
+        <h3>✗ ohne PromptForge</h3>
+        <ul>
+          <li>Prompt von vorne tippen</li>
+          <li>Copy-Paste zwischen Tabs</li>
+          <li>Jede AI einzeln öffnen</li>
+          <li>Kontext geht verloren</li>
+          <li>Skills vergessen anzuhängen</li>
+          <li>Whiteboard-Foto manuell beschreiben</li>
+        </ul>
+      </div>
+      <div class="compare-col after">
+        <h3>✓ mit PromptForge</h3>
+        <ul>
+          <li>Bausteine klicken, fertig</li>
+          <li>⇧⌘C — alle AIs gleichzeitig</li>
+          <li>Multi-Send: parallel vergleichen</li>
+          <li>Projekte mit eigenem Verlauf</li>
+          <li>Skills automatisch angehängt</li>
+          <li>Sketch-Button → Analyse-Prompt ready</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta">
+      <a class="cta-btn" href="https://github.com/abuis78/PromptForge-releases/releases/latest">⬇ Download — macOS</a>
+      <div class="cta-meta">
+        <strong>Kostenlos. Kein Account. Kein Abo.</strong><br>
+        macOS 14 Sonoma oder neuer · Apple Silicon + Intel · Notarisiert von Apple
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-col">
+    <div class="f-label">Stack</div>
+    <div class="f-val"><strong>Swift</strong> · SwiftUI · AppKit</div>
+  </div>
+  <div class="footer-col">
+    <div class="f-label">Platform</div>
+    <div class="f-val"><strong>macOS 14+</strong> · arm64 · x86</div>
+  </div>
+  <div class="footer-col">
+    <div class="f-label">Status</div>
+    <div class="f-val" style="color:var(--green)"><strong>● active</strong> dev</div>
+  </div>
+  <div class="footer-col">
+    <div class="f-label">Origin</div>
+    <div class="f-val">by <strong>Andreas Buis</strong></div>
+  </div>
+</footer>
+
+</body>
+</html>
